@@ -1,0 +1,44 @@
+{
+    "editor.suggestSelection": "first",
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+    "workbench.editorAssociations": [
+        {
+            "viewType": "jupyter.notebook.ipynb",
+            "filenamePattern": "*.ipynb"
+        }
+    ],
+    "git.autofetch": true,
+    "pyqt-integration.qtdesigner.path": "/usr/lib/qt5/bin/designer",
+    "pyqt-integration.pyuic.compile.addOptions": "-x",
+    "pyqt-integration.pyuic.compile.filepath": "${ui_name}.py",
+    "todo-tree.general.tags": ["TODO", "Todo", "todo", "FIXME", "Fixme", "fixme", "BUG", "Bug", "bug"],
+    "todo-tree.general.tagGroups": {
+        "TODO": [ "TODO", "Todo", "todo" ],
+        "FIXME": [ "FIXME", "Fixme", "fixme" ],
+        "BUG": [ "BUG", "Bug", "bug" ]
+    },
+    "todo-tree.tree.showCountsInTree": true,
+    "todo-tree.highlights.customHighlight": {
+        "TODO": {
+            "icon": "check",
+            "type": "text-and-comment",
+            "iconColour": "yellow",
+            "foreground": "darkred",
+            "background": "burlywood",
+          },
+        "FIXME": {
+            "icon": "flame",
+            "type": "text-and-comment",
+            "iconColour": "orange",
+            "foreground": "darkred",
+            "background": "goldenrod"
+        },
+        "BUG": {
+            "icon": "bug",
+            "type": "text-and-comment",
+            "iconColour": "red",
+            "foreground": "goldenrod",
+            "background": "darkred"
+        },
+    }
+}
