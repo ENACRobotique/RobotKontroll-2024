@@ -24,18 +24,29 @@ class Map_scene(QGraphicsScene):
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         rect_image = QRectF(rect.topLeft().x() / (Map_width*Scale) * self.background.width() , rect.topLeft().y() / (Map_height*Scale) * self.background.height(), self.background.width() * rect.width() / (Map_width*Scale) ,self.background.height() * rect.height() / (Map_height*Scale))
         painter.drawImage(rect, self.background, rect_image)
+    
+    def addRobot(self, name, ecal_pos_topic):
+        robot = Robot(name, ecal_pos_topic)
+        self.addItem(robot)
+    
+
 
 
 class MySignalEmitter(QObject):
-    custom_signal = pyqtSignal(float, float, float)
+    pos_signal = pyqtSignal(float, float, float)
 
 class Robot(QGraphicsItemGroup):
-    def __init__(self, color = QColor("blue")) -> None:
+    def __init__(self, name, ecal_pos_topic, color = QColor("blue")) -> None:
         super().__init__()
         self.x = 0
         self.y = 0
         self.theta = 0
         self.color = color
+        self.name = name
+
+        self.signal_emitter = MySignalEmitter() # Qt Signals
+
+        ## GraphicsItem
         body = QGraphicsEllipseItem((- Robot_diameter/2) * Scale, - Robot_diameter/2 * Scale, Robot_diameter * Scale, Robot_diameter * Scale)
         body.setBrush(self.color)
         self.addToGroup(body)
@@ -43,6 +54,18 @@ class Robot(QGraphicsItemGroup):
         orientation_pointer = QGraphicsLineItem(0,0,300*Scale,0)
         orientation_pointer.setPen(QPen(Qt.black, 10*Scale, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         self.addToGroup(orientation_pointer)
+
+        ## Ecal
+        # Position
+        def send_pos_signal(topic_name, hlm, time):
+            if hlm.name == self.name:
+                self.signal_emitter.pos_signal.emit(hlm.x, hlm.y, hlm.theta)
+
+        pos_sub = ProtoSubscriber(ecal_pos_topic, hgpb.Position)
+        pos_sub.set_callback(send_pos_signal)
+
+        self.signal_emitter.pos_signal.connect(robot.setPos)
+        
 
     def setPos(self,x,y,theta):
         super().setPos(x * Scale ,(Map_height - y)* Scale)
@@ -54,13 +77,9 @@ class Robot(QGraphicsItemGroup):
 
 
 if __name__ == "__main__":
+    ecal_core.initialize(sys.argv, "Robot2Kontroll")
     app = QApplication([])
     main_window = QMainWindow()
-
-    ##### Tool bar
-    #tool_bar = QToolBar("tools")
-    #tool_bar.addWidget(QPushButton("tool test"))
-    #main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea,tool_bar)
 
     ##### Container Principal
     central_frame = QFrame()
@@ -69,26 +88,42 @@ if __name__ == "__main__":
     central_frame.setLayout(central_frame_layout)
 
 
-    ##### Ajout de la map
+    ### Ajout de la map
     scene = Map_scene(0,0,Map_width * Scale, Map_height * Scale)
-
-    robot = Robot()
-    robot.setPos(1500,1000,math.pi/2)
-    scene.addItem(robot)
 
     view = QGraphicsView(scene)
     central_frame_layout.addWidget(view)
 
-    #####
+    ### Ajout de tab
     robots_tabs = QTabWidget()
     central_frame_layout.addWidget(robots_tabs)
 
     page = QFrame()
     page_layout = QVBoxLayout()
     page.setLayout(page_layout)
-    page_layout.addWidget(QPushButton("button 1"))
-    page_layout.addWidget(QPushButton("button 2"))
-    robots_tabs.addTab(page,"Robot 1")
+    page_layout.addWidget(QPushButton("TEST"))
+    page_layout.addWidget(QPushButton("TEST"))
+    robots_tabs.addTab(page,"TEST")
+
+
+
+    ##### Tool bar
+    tool_bar = QToolBar("tools")
+    main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea,tool_bar)
+    
+    add_robot_button = QPushButton("Add robot")
+    tool_bar.addWidget(add_robot_button)
+    add_robot_button.clicked.connect(scene.addRobot)
+
+    robot_name_field = QLineEdit()
+    tool_bar.addWidget(robot_name_field)
+    robot_name_field.setPlaceholderText("Name")
+
+    robot_ecal_pos_field = QLineEdit()
+    tool_bar.addWidget(robot_ecal_pos_field)
+    robot_ecal_pos_field.setPlaceholderText("Ecal pos topic")
+
+
 
 
 
@@ -98,16 +133,9 @@ if __name__ == "__main__":
     ## Ecal ##
     ##########
     # temporaire
-    signal_emitter = MySignalEmitter()
-
-    def send_signal(topic_name, hlm, time):
-        signal_emitter.custom_signal.emit(hlm.x, hlm.y, hlm.theta)
     
-    signal_emitter.custom_signal.connect(robot.setPos)
 
-    ecal_core.initialize(sys.argv, "Robot2Kontroll")
-    odom_pos_sub = ProtoSubscriber("odom_pos", hgpb.Position)
-    odom_pos_sub.set_callback(send_signal)
+
 
     ##### Launch the app
     app.exec()
