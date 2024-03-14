@@ -4,6 +4,8 @@ from PyQt5.QtCore import QRectF, Qt, QObject, pyqtSignal
 import math
 
 import sys
+
+from PyQt5.QtWidgets import QWidget
 import robot_state_pb2 as hgpb
 import ecal.core.core as ecal_core
 from ecal.core.publisher import ProtoPublisher
@@ -25,10 +27,36 @@ class Map_scene(QGraphicsScene):
         rect_image = QRectF(rect.topLeft().x() / (Map_width*Scale) * self.background.width() , rect.topLeft().y() / (Map_height*Scale) * self.background.height(), self.background.width() * rect.width() / (Map_width*Scale) ,self.background.height() * rect.height() / (Map_height*Scale))
         painter.drawImage(rect, self.background, rect_image)
     
-    def addRobot(self, name, ecal_pos_topic):
-        robot = Robot(name, ecal_pos_topic)
+    def addRobot(self, robot):
         self.addItem(robot)
+
     
+class Monitor_Command(QTabWidget):
+    
+    def addRobot(self,robot):
+        page = QFrame()
+        self.addTab(page,robot.name)
+        page_layout = QVBoxLayout()
+        page.setLayout(page_layout)
+
+        pos_frame = QFrame()
+        page_layout.addWidget(pos_frame)
+        pos_frame_layout = QHBoxLayout()
+        pos_frame.setLayout(pos_frame_layout)
+        self.x_label = QLabel("Na")
+        pos_frame_layout.addWidget(self.x_label)
+        self.y_label = QLabel("Na")
+        pos_frame_layout.addWidget(self.y_label)
+        self.theta_label = QLabel("Na")
+        pos_frame_layout.addWidget(self.theta_label)
+
+        robot.signal_emitter.pos_signal.connect(self.update_pos)
+    
+    def update_pos(self,x,y,theta):
+        self.x_label.setText("x_odom:{:.3f}".format(x))
+        self.y_label.setText("y_odom:{:.3f}".format(y))
+        self.theta_label.setText("theta_odom:{:.3f}".format(theta))
+        
 
 
 
@@ -55,16 +83,20 @@ class Robot(QGraphicsItemGroup):
         orientation_pointer.setPen(QPen(Qt.black, 10*Scale, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         self.addToGroup(orientation_pointer)
 
+        QGraphicsTextItem(self.name, body)
+
         ## Ecal
         # Position
         def send_pos_signal(topic_name, hlm, time):
-            if hlm.name == self.name:
-                self.signal_emitter.pos_signal.emit(hlm.x, hlm.y, hlm.theta)
+            #if hlm.name == self.name:
+            #    self.signal_emitter.pos_signal.emit(hlm.x, hlm.y, hlm.theta)
+            self.signal_emitter.pos_signal.emit(hlm.x, hlm.y, hlm.theta)
 
         pos_sub = ProtoSubscriber(ecal_pos_topic, hgpb.Position)
         pos_sub.set_callback(send_pos_signal)
 
-        self.signal_emitter.pos_signal.connect(robot.setPos)
+        self.signal_emitter.pos_signal.connect(self.setPos)
+        
         
 
     def setPos(self,x,y,theta):
@@ -74,6 +106,11 @@ class Robot(QGraphicsItemGroup):
         self.y = y
         self.theta = theta
 
+
+def addRobot(scene, tabs, name, ecal_pos_topic):
+        robot = Robot(name, ecal_pos_topic)
+        scene.addRobot(robot)
+        tabs.addRobot(robot)
 
 
 if __name__ == "__main__":
@@ -95,17 +132,8 @@ if __name__ == "__main__":
     central_frame_layout.addWidget(view)
 
     ### Ajout de tab
-    robots_tabs = QTabWidget()
+    robots_tabs = Monitor_Command()
     central_frame_layout.addWidget(robots_tabs)
-
-    page = QFrame()
-    page_layout = QVBoxLayout()
-    page.setLayout(page_layout)
-    page_layout.addWidget(QPushButton("TEST"))
-    page_layout.addWidget(QPushButton("TEST"))
-    robots_tabs.addTab(page,"TEST")
-
-
 
     ##### Tool bar
     tool_bar = QToolBar("tools")
@@ -113,7 +141,6 @@ if __name__ == "__main__":
     
     add_robot_button = QPushButton("Add robot")
     tool_bar.addWidget(add_robot_button)
-    add_robot_button.clicked.connect(scene.addRobot)
 
     robot_name_field = QLineEdit()
     tool_bar.addWidget(robot_name_field)
@@ -123,19 +150,13 @@ if __name__ == "__main__":
     tool_bar.addWidget(robot_ecal_pos_field)
     robot_ecal_pos_field.setPlaceholderText("Ecal pos topic")
 
+    add_robot_button.clicked.connect(lambda :addRobot(scene, robots_tabs, robot_name_field.text(), robot_ecal_pos_field.text()))
 
+    
 
-
-
-    main_window.show()
-
-    ##########
-    ## Ecal ##
-    ##########
-    # temporaire
     
 
 
 
-    ##### Launch the app
+    main_window.show()
     app.exec()
