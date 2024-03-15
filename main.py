@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QImage, QPainter, QColor, QPen
-from PyQt5.QtCore import QRectF, Qt, QObject, pyqtSignal, QLocale
+from PyQt5.QtGui import QImage, QPainter, QColor, QPen, QTransform
+from PyQt5.QtCore import QRectF, Qt, QObject, pyqtSignal, QLocale, QPointF
 import math
 
 import sys
+
+from PyQt5.QtWidgets import QGraphicsSceneMouseEvent
 
 import generated.robot_state_pb2 as hgpb
 import ecal.core.core as ecal_core
@@ -21,6 +23,8 @@ class Map_scene(QGraphicsScene):
     def __init__(self,x,y,w,h):
         super().__init__(x,y,w,h)
         self.background = QImage("table.png")
+        self.pressPoint = QPointF()
+        self.pub_send_pos = ProtoPublisher("set_position",hgpb.Position)
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         rect_image = QRectF(rect.topLeft().x() / (Map_width*Scale) * self.background.width() , rect.topLeft().y() / (Map_height*Scale) * self.background.height(), self.background.width() * rect.width() / (Map_width*Scale) ,self.background.height() * rect.height() / (Map_height*Scale))
@@ -28,6 +32,44 @@ class Map_scene(QGraphicsScene):
     
     def addRobotGraphic(self, robot_graphic):
         self.addItem(robot_graphic)
+    
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        self.pressPoint = event.scenePos()
+        # msg = hgpb.Position()
+        # msg.x = self.pressPoint.x() / Scale
+        # msg.y = (Map_height* Scale - self.pressPoint.y()) / Scale
+        # msg.theta = 0
+        # self.pub_send_pos.send(msg)
+        
+        
+        
+    
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        pass
+    
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+
+        def send_pos(x,y,theta):
+            msg = hgpb.Position()
+            msg.x = x
+            msg.y = y
+            msg.theta = theta
+            self.pub_send_pos.send(msg)
+
+        delta = event.scenePos()
+        delta -= self.pressPoint
+        distance = math.sqrt(QPointF.dotProduct(delta,delta))
+        if distance < Scale * 10:
+            theta = self.items()[3].theta # TODO Récupérer theta de manière propre
+            send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
+            print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale)
+        else:
+            theta = math.acos(delta.x() / distance)
+            if delta.y() > 0:
+                theta *=-1
+            send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
+            print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale,theta)
+    
 
     
 class Monitor_Command(QTabWidget):
@@ -61,7 +103,7 @@ class Robot:
 
         ## commande de position
         self.addPosTypeCommand("set_position", "Goto pos (x,y,theta) [mm/°]")
-        self.addPosTypeCommand("reset_position", "Reset pos (x,y,theta) [mm/°]")
+        self.addPosTypeCommand("reset", "Reset pos (x,y,theta) [mm/°]")
 
 
     def getPage(self):
@@ -113,13 +155,14 @@ class Robot:
     
     
 class RobotGraphic(QGraphicsItemGroup):
-    def __init__(self, name, ecal_pos_topic, color = "darkblue") -> None:
+    def __init__(self, name, rep_name, ecal_pos_topic, color = "darkblue") -> None:
         super().__init__()
         self.x = 0
         self.y = 0
         self.theta = 0
         self.color = color
         self.name = name
+        self.rep_name = rep_name
 
         self.signal_emitter = MySignalEmitter() # Qt Signals
 
@@ -129,7 +172,7 @@ class RobotGraphic(QGraphicsItemGroup):
         self.pos_frame.setLayout(self.pos_frame_layout)
         self.pos_frame.setMaximumHeight(50)
         self.pos_frame.setStyleSheet(f"QFrame {{ background : {color}; }}")
-        name_label = QLabel(self.name)
+        name_label = QLabel(self.rep_name)
         self.pos_frame_layout.addWidget(name_label)
         self.x_label = QLabel("x: Na")
         self.pos_frame_layout.addWidget(self.x_label)
@@ -184,7 +227,7 @@ class RobotGraphic(QGraphicsItemGroup):
 
 
 def addRobot(scene, tabs, name, representation_name, ecal_pos_topic, color):
-    robot_graphic = RobotGraphic(representation_name, ecal_pos_topic, color)
+    robot_graphic = RobotGraphic(name, representation_name, ecal_pos_topic, color)
     scene.addRobotGraphic(robot_graphic)
     tabs.addRobotGraphic(name, robot_graphic)
 
