@@ -23,8 +23,13 @@ class Map_scene(QGraphicsScene):
     def __init__(self,x,y,w,h):
         super().__init__(x,y,w,h)
         self.background = QImage("table.png")
-        self.pressPoint = QPointF()
         self.pub_send_pos = ProtoPublisher("set_position",hgpb.Position)
+        self.pressPoint = QPointF()
+        self.orientation_line = QGraphicsLineItem(0,0,Map_width * Scale, Map_height * Scale)
+        self.addItem(self.orientation_line)
+        self.orientation_line.hide()
+        self.orientation_line.setPen(QPen(Qt.blue, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         rect_image = QRectF(rect.topLeft().x() / (Map_width*Scale) * self.background.width() , rect.topLeft().y() / (Map_height*Scale) * self.background.height(), self.background.width() * rect.width() / (Map_width*Scale) ,self.background.height() * rect.height() / (Map_height*Scale))
@@ -35,19 +40,13 @@ class Map_scene(QGraphicsScene):
     
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.pressPoint = event.scenePos()
-        # msg = hgpb.Position()
-        # msg.x = self.pressPoint.x() / Scale
-        # msg.y = (Map_height* Scale - self.pressPoint.y()) / Scale
-        # msg.theta = 0
-        # self.pub_send_pos.send(msg)
-        
-        
-        
+        self.orientation_line.show()
     
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        pass
+        self.orientation_line.setLine(self.pressPoint.x(), self.pressPoint.y(), event.scenePos().x(), event.scenePos().y())
     
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        self.orientation_line.hide()
 
         def send_pos(x,y,theta):
             msg = hgpb.Position()
@@ -66,7 +65,7 @@ class Map_scene(QGraphicsScene):
         else:
             theta = math.acos(delta.x() / distance)
             if delta.y() > 0:
-                theta *=-1
+                theta *= -1
             send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
             print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale,theta)
     
@@ -104,6 +103,7 @@ class Robot:
         ## commande de position
         self.addPosTypeCommand("set_position", "Goto pos (x,y,theta) [mm/°]")
         self.addPosTypeCommand("reset", "Reset pos (x,y,theta) [mm/°]")
+        self.page_layout.addStretch()
 
 
     def getPage(self):
@@ -118,7 +118,7 @@ class Robot:
         self.page_layout.addWidget(frame)
         frame_layout = QHBoxLayout()
         frame.setLayout(frame_layout)
-        
+        frame.setMaximumHeight(50)
 
         send = QPushButton(button_text)
         frame_layout.addWidget(send)
