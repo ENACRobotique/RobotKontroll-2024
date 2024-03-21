@@ -24,6 +24,7 @@ class Map_scene(QGraphicsScene):
         super().__init__(x,y,w,h)
         self.background = QImage("table.png")
         self.pub_send_pos = ProtoPublisher("set_position",hgpb.Position)
+        self.selectedRobotGraphic = None
         self.pressPoint = QPointF()
         self.orientation_line = QGraphicsLineItem(0,0,Map_width * Scale, Map_height * Scale)
         self.addItem(self.orientation_line)
@@ -39,35 +40,49 @@ class Map_scene(QGraphicsScene):
         self.addItem(robot_graphic)
     
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        self.pressPoint = event.scenePos()
-        self.orientation_line.show()
+        if event.button() == Qt.MouseButton.LeftButton :
+            self.pressPoint = event.scenePos()
+            self.orientation_line.show()
+        elif event.button() == Qt.MouseButton.RightButton :
+            items = self.items(event.scenePos(), order = Qt.SortOrder.AscendingOrder)
+            try :
+                self.selectedRobotGraphic = items[0]
+            except IndexError :
+                print("No robot at this place")
+            if self.selectedRobotGraphic != None:
+                print(f'{self.selectedRobotGraphic.name}_{self.selectedRobotGraphic.rep_name} selected')
+
     
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.orientation_line.setLine(self.pressPoint.x(), self.pressPoint.y(), event.scenePos().x(), event.scenePos().y())
     
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        self.orientation_line.hide()
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.orientation_line.hide()
 
-        def send_pos(x,y,theta):
-            msg = hgpb.Position()
-            msg.x = x
-            msg.y = y
-            msg.theta = theta
-            self.pub_send_pos.send(msg)
+            def send_pos(x,y,theta):
+                msg = hgpb.Position()
+                msg.x = x
+                msg.y = y
+                msg.theta = theta
+                self.pub_send_pos.send(msg)
 
-        delta = event.scenePos()
-        delta -= self.pressPoint
-        distance = math.sqrt(QPointF.dotProduct(delta,delta))
-        if distance < Scale * 10:
-            theta = self.items()[3].theta # TODO Récupérer theta de manière propre
-            send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
-            print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale)
-        else:
-            theta = math.acos(delta.x() / distance)
-            if delta.y() > 0:
-                theta *= -1
-            send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
-            print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale,theta)
+            delta = event.scenePos()
+            delta -= self.pressPoint
+            distance = math.sqrt(QPointF.dotProduct(delta,delta))
+            if distance < Scale * 10:
+                if self.selectedRobotGraphic == None:
+                    print("No selected Robot")
+                else :
+                    theta = self.selectedRobotGraphic.theta
+                    send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
+                    print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale)
+            else:
+                theta = math.acos(delta.x() / distance)
+                if delta.y() > 0:
+                    theta *= -1
+                send_pos(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale, theta)
+                print(self.pressPoint.x() / Scale, (Map_height* Scale - self.pressPoint.y()) / Scale,theta)
     
 
     
@@ -190,7 +205,7 @@ class RobotGraphic(QGraphicsItemGroup):
         orientation_pointer.setPen(QPen(Qt.black, 10*Scale, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         self.addToGroup(orientation_pointer)
 
-        self.name_text = QGraphicsTextItem(self.name, body)
+        self.name_text = QGraphicsTextItem(f'{self.name}\n{self.rep_name}', body)
 
         ## Ecal
         # Position
