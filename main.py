@@ -118,6 +118,7 @@ class Robot:
         ## commande de position
         self.addPosTypeCommand("set_position", "Goto pos (x,y,theta) [mm/°]")
         self.addPosTypeCommand("reset", "Reset pos (x,y,theta) [mm/°]")
+        self.addSpeedTypeCommand("speed_cons","Speed control")
         self.page_layout.addStretch()
 
 
@@ -152,7 +153,7 @@ class Robot:
 
         theta_send = QDoubleSpinBox()
         frame_layout.addWidget(theta_send)
-        theta_send.setSingleStep(45)
+        theta_send.setSingleStep(10)
         theta_send.setRange(0, 360)
         theta_send.setLocale(QLocale("en"))
 
@@ -164,6 +165,45 @@ class Robot:
             msg.y = y
             msg.theta = theta
             pub_send_pos.send(msg)
+        
+        send.clicked.connect(lambda : send_pos(x_send.value(), y_send.value(), math.radians(theta_send.value())))
+    
+    def addSpeedTypeCommand(self, ecal_topic_send, button_text):
+        frame = QFrame()
+        self.page_layout.addWidget(frame)
+        frame_layout = QHBoxLayout()
+        frame.setLayout(frame_layout)
+        frame.setMaximumHeight(50)
+
+        send = QPushButton(button_text)
+        frame_layout.addWidget(send)
+
+        x_send = QDoubleSpinBox()
+        frame_layout.addWidget(x_send)
+        x_send.setSingleStep(10)
+        x_send.setRange(-1000, 1000)
+        x_send.setLocale(QLocale("en")) # utilise le . pour le séparateur de décimal
+
+        y_send = QDoubleSpinBox()
+        frame_layout.addWidget(y_send)
+        y_send.setSingleStep(10)
+        y_send.setRange(-1000, 1000)
+        y_send.setLocale(QLocale("en"))
+
+        theta_send = QDoubleSpinBox()
+        frame_layout.addWidget(theta_send)
+        theta_send.setSingleStep(10)
+        theta_send.setRange(-360, 360)
+        theta_send.setLocale(QLocale("en"))
+
+        pub_send_speed = ProtoPublisher(ecal_topic_send,hgpb.Position)
+
+        def send_pos(x,y,theta):
+            msg = hgpb.Speed()
+            msg.vx = x
+            msg.vy = y
+            msg.vtheta = theta
+            pub_send_speed.send(msg)
         
         send.clicked.connect(lambda : send_pos(x_send.value(), y_send.value(), math.radians(theta_send.value())))
     
