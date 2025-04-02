@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QImage, QPainter, QColor, QPen, QTransform
 from PyQt5.QtCore import QRectF, Qt, QObject, pyqtSignal, QLocale, QPointF
@@ -339,11 +340,6 @@ if __name__ == "__main__":
 
 
     add_robot_button.clicked.connect(lambda :addRobot(scene, robots_tabs, robot_name_field.text(), robot_repName_field.text(), robot_ecal_pos_field.text(), robot_color_field.currentText()))
-
-    
-
-    
-
 
 
     main_window.show()
