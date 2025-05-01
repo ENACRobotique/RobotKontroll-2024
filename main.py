@@ -197,7 +197,7 @@ class Robot:
         theta_send.setRange(-360, 360)
         theta_send.setLocale(QLocale("en"))
 
-        pub_send_speed = ProtoPublisher(ecal_topic_send,hgpb.Position)
+        #pub_send_speed = ProtoPublisher(ecal_topic_send,hgpb.Position)
 
         def send_pos(x,y,theta):
             msg = hgpb.Speed()
@@ -206,7 +206,7 @@ class Robot:
             msg.vtheta = theta
             pub_send_speed.send(msg)
         
-        send.clicked.connect(lambda : send_pos(x_send.value(), y_send.value(), math.radians(theta_send.value())))
+        #send.clicked.connect(lambda : send_pos(x_send.value(), y_send.value(), math.radians(theta_send.value())))
     
     
     
@@ -277,7 +277,7 @@ class RobotGraphic(QGraphicsItemGroup):
         ## Affichage Tabs
         self.x_label.setText("x: {:.3f}".format(x))
         self.y_label.setText("y: {:.3f}".format(y))
-        self.theta_label.setText("theta: {:.3f}".format(theta))
+        self.theta_label.setText("theta: {:.3f}".format(math.degrees(theta)))
     
         
 
