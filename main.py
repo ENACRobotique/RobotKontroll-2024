@@ -310,6 +310,9 @@ if __name__ == "__main__":
     robots_tabs = Monitor_Command()
     central_frame_layout.addWidget(robots_tabs)
 
+    central_frame_layout.setStretch(0,5)
+    central_frame_layout.setStretch(1,1)
+
     ##### Tool bar
     tool_bar = QToolBar("tools")
     main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea,tool_bar)
@@ -341,6 +344,8 @@ if __name__ == "__main__":
 
     add_robot_button.clicked.connect(lambda :addRobot(scene, robots_tabs, robot_name_field.text(), robot_repName_field.text(), robot_ecal_pos_field.text(), robot_color_field.currentText()))
 
-
+    addRobot(scene, robots_tabs, "Odom","Odom", "odom_pos", "red")
+    addRobot(scene, robots_tabs, "Lidar","Lidar", "lidar_pos", "blue")
+    
     main_window.show()
     app.exec()
