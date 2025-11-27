@@ -21,7 +21,10 @@ Map_height = 2000 #mm
 Map_width = 3000 #mm
 Scale = 0.43 # mm -> graphic_size
 
-
+class Map_view(QGraphicsView):
+    def resizeEvent(self, event):
+        self.fitInView(self.scene().sceneRect(), Qt.KeepAspectRatio)
+        super().resizeEvent(event)
 
 class Map_scene(QGraphicsScene):
     def __init__(self,x,y,w,h):
@@ -55,9 +58,8 @@ class Map_scene(QGraphicsScene):
             theta += 2*math.pi
         return theta
 
-    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
-        rect_image = QRectF(rect.topLeft().x() / (Map_width*Scale) * self.background.width() , rect.topLeft().y() / (Map_height*Scale) * self.background.height(), self.background.width() * rect.width() / (Map_width*Scale) ,self.background.height() * rect.height() / (Map_height*Scale))
-        painter.drawImage(rect, self.background, rect_image)
+    def drawBackground(self, painter, rect):
+        painter.drawImage(self.sceneRect(), self.background)
     
     def addRobotGraphic(self, robot_graphic):
         self.addItem(robot_graphic)
@@ -189,30 +191,37 @@ class Robot:
         self.robotGraphics[robot_graphic.name] = robot_graphic
         self.page_layout.addWidget(robot_graphic.getPosFrame())
     
-    def addPosTypeCommand(self, ecal_topic_send, button_text):
+    def addPosTypeCommand(self, ecal_topic_send, text):
         frame = QFrame()
         self.page_layout.addWidget(frame)
-        frame_layout = QHBoxLayout()
-        frame.setLayout(frame_layout)
-        frame.setMaximumHeight(50)
+        frame_layout = QVBoxLayout()
+        frame_buttons_layout = QHBoxLayout()
+        frame_label_layout = QHBoxLayout()
 
-        send = QPushButton(button_text)
-        frame_layout.addWidget(send)
+        command_text = QLabel(text)
+        frame_label_layout.addWidget(command_text)
+        send = QPushButton("send")
+        frame_label_layout.addWidget(send)
+        
+        frame_layout.addLayout(frame_label_layout)
+        frame_layout.addLayout(frame_buttons_layout)
+        frame.setLayout(frame_layout)
+        frame.setMaximumHeight(100)
 
         x_send = QDoubleSpinBox()
-        frame_layout.addWidget(x_send)
+        frame_buttons_layout.addWidget(x_send)
         x_send.setSingleStep(10)
         x_send.setRange(0, Map_width)
         x_send.setLocale(QLocale("en")) # utilise le . pour le séparateur de décimal
 
         y_send = QDoubleSpinBox()
-        frame_layout.addWidget(y_send)
+        frame_buttons_layout.addWidget(y_send)
         y_send.setSingleStep(10)
         y_send.setRange(0, Map_height)
         y_send.setLocale(QLocale("en"))
 
         theta_send = QDoubleSpinBox()
-        frame_layout.addWidget(theta_send)
+        frame_buttons_layout.addWidget(theta_send)
         theta_send.setSingleStep(10)
         theta_send.setRange(0, 360)
         theta_send.setLocale(QLocale("en"))
@@ -228,30 +237,37 @@ class Robot:
         
         send.clicked.connect(lambda : send_pos(x_send.value(), y_send.value(), math.radians(theta_send.value())))
     
-    def addSpeedTypeCommand(self, ecal_topic_send, button_text):
+    def addSpeedTypeCommand(self, ecal_topic_send, text):
         frame = QFrame()
         self.page_layout.addWidget(frame)
-        frame_layout = QHBoxLayout()
-        frame.setLayout(frame_layout)
-        frame.setMaximumHeight(50)
+        frame_layout = QVBoxLayout()
+        frame_buttons_layout = QHBoxLayout()
+        frame_label_layout = QHBoxLayout()
 
-        send = QPushButton(button_text)
-        frame_layout.addWidget(send)
+        command_text = QLabel(text)
+        frame_label_layout.addWidget(command_text)
+        send = QPushButton("send")
+        frame_label_layout.addWidget(send)
+        
+        frame_layout.addLayout(frame_label_layout)
+        frame_layout.addLayout(frame_buttons_layout)
+        frame.setLayout(frame_layout)
+        frame.setMaximumHeight(100)
 
         x_send = QDoubleSpinBox()
-        frame_layout.addWidget(x_send)
+        frame_buttons_layout.addWidget(x_send)
         x_send.setSingleStep(10)
         x_send.setRange(-1000, 1000)
         x_send.setLocale(QLocale("en")) # utilise le . pour le séparateur de décimal
 
         y_send = QDoubleSpinBox()
-        frame_layout.addWidget(y_send)
+        frame_buttons_layout.addWidget(y_send)
         y_send.setSingleStep(10)
         y_send.setRange(-1000, 1000)
         y_send.setLocale(QLocale("en"))
 
         theta_send = QDoubleSpinBox()
-        frame_layout.addWidget(theta_send)
+        frame_buttons_layout.addWidget(theta_send)
         theta_send.setSingleStep(10)
         theta_send.setRange(-360, 360)
         theta_send.setLocale(QLocale("en"))
@@ -292,7 +308,9 @@ class RobotGraphic(QGraphicsItemGroup):
         self.pos_frame_layout = QHBoxLayout()
         self.pos_frame.setLayout(self.pos_frame_layout)
         self.pos_frame.setMaximumHeight(50)
-        self.pos_frame.setStyleSheet(f"QFrame {{ background : {color}; }}")
+        robot_color = QLabel()
+        robot_color.setStyleSheet(f"QFrame {{ background : {color}; }}")
+        robot_color.setFixedSize(50, 25)
         name_label = QLabel(self.rep_name)
         name_label.setStyleSheet("font-size:28px;")
         self.pos_frame_layout.addWidget(name_label)
@@ -348,8 +366,72 @@ class RobotGraphic(QGraphicsItemGroup):
         self.x_label.setText("x: {:.3f}".format(x))
         self.y_label.setText("y: {:.3f}".format(y))
         self.theta_label.setText("theta: {:.3f}".format(math.degrees(normalize_angle(theta))))
-    
+
+class Tools(QToolBar):
+    def __init__(self,scene,robots_tabs):
+        super().__init__()
+        add_robot_button = QPushButton("Add robot")
+        self.addWidget(add_robot_button)
+
+        robot_name_field = QLineEdit()
+        robot_name_field.setPlaceholderText("Name")
+        self.addWidget(robot_name_field)
+
+        robot_repName_field = QLineEdit()
+        robot_repName_field.setPlaceholderText("Representation name")
+        self.addWidget(robot_repName_field)
+
+        robot_ecal_pos_field = QLineEdit()
+        robot_ecal_pos_field.setPlaceholderText("Ecal pos topic")
+        self.addWidget(robot_ecal_pos_field)
+
+        robot_color_field = QComboBox()
+        colors = QColor.colorNames()
+        for i in range(len(colors)):
+            robot_color_field.insertItem(i, colors[i])
+        robot_color_field.currentTextChanged.connect(lambda : robot_color_field.setStyleSheet(f"QComboBox {{ background : { robot_color_field.currentText()}}}"))
+        robot_color_field.setCurrentText("red")
+        self.addWidget(robot_color_field)
+        add_robot_button.clicked.connect(lambda :addRobot(scene, robots_tabs, robot_name_field.text(), robot_repName_field.text(), robot_ecal_pos_field.text(), robot_color_field.currentText()))
         
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Robot Kontroll")
+
+        # Sous-fenêtre à gauche
+        scene = Map_scene(0,0,Map_width * Scale, Map_height * Scale)
+        map_window = Map_view(scene)
+
+        # Sous-fenêtre à droite
+        command_window = Monitor_Command()
+
+        # Sous-fenêtre en haut 
+        communication_window = Tools(scene,command_window)
+
+        # Création d'un splitter vertical
+        splitterV = QSplitter(Qt.Vertical)
+        # Création d'un splitter horizontal
+        splitterH = QSplitter(Qt.Horizontal)
+
+        # Ajout des widgets au splitter
+        splitterH.addWidget(map_window)
+        splitterH.addWidget(command_window)
+        splitterV.addWidget(communication_window)
+        splitterV.addWidget(splitterH)
+
+        # Un widget container pour la fenêtre principale
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(splitterV)
+        ##layout.addWidget(splitterH)
+        container.setLayout(layout)
+
+        self.setCentralWidget(container)
+
+        addRobot(scene, command_window, "Odom","Odom", "odom_pos", "red")
+        addRobot(scene, command_window, "Lidar","Lidar", "lidar_pos", "blue")
 
 
 def addRobot(scene, tabs, name, representation_name, ecal_pos_topic, color):
@@ -361,61 +443,7 @@ def addRobot(scene, tabs, name, representation_name, ecal_pos_topic, color):
 if __name__ == "__main__":
     ecal_core.initialize("Robot2Kontroll")
     app = QApplication([])
-    main_window = QMainWindow()
-
-    ##### Container Principal
-    central_frame = QFrame()
-    main_window.setCentralWidget(central_frame)
-    central_frame_layout = QHBoxLayout()
-    central_frame.setLayout(central_frame_layout)
-
-
-    ### Ajout de la map
-    scene = Map_scene(0,0,Map_width * Scale, Map_height * Scale)
-
-    view = QGraphicsView(scene)
-    central_frame_layout.addWidget(view)
-
-    ### Ajout de tab
-    robots_tabs = Monitor_Command()
-    central_frame_layout.addWidget(robots_tabs)
-
-    central_frame_layout.setStretch(0,5)
-    central_frame_layout.setStretch(1,1)
-
-    ##### Tool bar
-    tool_bar = QToolBar("tools")
-    main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea,tool_bar)
-    
-    add_robot_button = QPushButton("Add robot")
-    tool_bar.addWidget(add_robot_button)
-
-    robot_name_field = QLineEdit()
-    tool_bar.addWidget(robot_name_field)
-    robot_name_field.setPlaceholderText("Name")
-
-    robot_repName_field = QLineEdit()
-    tool_bar.addWidget(robot_repName_field)
-    robot_repName_field.setPlaceholderText("Representation name")
-
-    robot_ecal_pos_field = QLineEdit()
-    tool_bar.addWidget(robot_ecal_pos_field)
-    robot_ecal_pos_field.setPlaceholderText("Ecal pos topic")
-
-
-    robot_color_field = QComboBox()
-    tool_bar.addWidget(robot_color_field)
-    colors = QColor.colorNames()
-    for i in range(len(colors)):
-        robot_color_field.insertItem(i, colors[i])
-    robot_color_field.currentTextChanged.connect(lambda : robot_color_field.setStyleSheet(f"QComboBox {{ background : { robot_color_field.currentText()}}}"))
-    robot_color_field.setCurrentText("red")
-
-
-    add_robot_button.clicked.connect(lambda :addRobot(scene, robots_tabs, robot_name_field.text(), robot_repName_field.text(), robot_ecal_pos_field.text(), robot_color_field.currentText()))
-
-    addRobot(scene, robots_tabs, "Odom","Odom", "odom_pos", "red")
-    addRobot(scene, robots_tabs, "Lidar","Lidar", "lidar_pos", "blue")
-    
-    main_window.show()
-    app.exec()
+    window = QMainWindow()
+    window.resize(1000, 600)
+    window.show()
+    sys.exit(app.exec_())
