@@ -312,16 +312,12 @@ class RobotGraphic(QGraphicsItemGroup):
         robot_color.setStyleSheet(f"QFrame {{ background : {color}; }}")
         robot_color.setFixedSize(50, 25)
         name_label = QLabel(self.rep_name)
-        name_label.setStyleSheet("font-size:28px;")
         self.pos_frame_layout.addWidget(name_label)
         self.x_label = QLabel("x: Na")
-        self.x_label.setStyleSheet("font-size:28px;")
         self.pos_frame_layout.addWidget(self.x_label)
         self.y_label = QLabel("y: Na")
-        self.y_label.setStyleSheet("font-size:28px;")
         self.pos_frame_layout.addWidget(self.y_label)
         self.theta_label = QLabel("theta: Na")
-        self.theta_label.setStyleSheet("font-size:28px;")
         self.pos_frame_layout.addWidget(self.theta_label)
 
         ## GraphicsItem
@@ -443,7 +439,7 @@ def addRobot(scene, tabs, name, representation_name, ecal_pos_topic, color):
 if __name__ == "__main__":
     ecal_core.initialize("Robot2Kontroll")
     app = QApplication([])
-    window = QMainWindow()
+    window = MainWindow()
     window.resize(1000, 600)
     window.show()
     sys.exit(app.exec_())
